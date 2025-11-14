@@ -4,76 +4,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dark Theme Phone Login</title>
+    <title>Phone Login | Invisible reCAPTCHA</title>
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body {
             margin: 0;
-            font-family: "Poppins", sans-serif;
-            background: radial-gradient(circle at top left, #121212, #000);
-            color: #f5f5f5;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #fff;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
         }
 
-        .container {
-            background: #1f1f1f;
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        .box {
+            background: #1e1e1e;
+            padding: 30px;
             width: 350px;
+            border-radius: 12px;
             text-align: center;
-        }
-
-        h2 {
-            margin-bottom: 20px;
-            color: #00bcd4;
         }
 
         input {
             width: 100%;
             padding: 12px;
-            margin: 10px 0;
+            margin-top: 15px;
+            background: #2b2b2b;
             border: none;
             border-radius: 8px;
-            background: #2c2c2c;
-            color: #fff;
+            color: white;
             font-size: 16px;
-        }
-
-        input:focus {
-            outline: 2px solid #00bcd4;
         }
 
         button {
+            margin-top: 15px;
             width: 100%;
             padding: 12px;
-            margin-top: 10px;
-            border: none;
-            border-radius: 8px;
             background: #00bcd4;
+            border: none;
             color: white;
-            font-size: 16px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: 0.3s ease;
-        }
-
-        button:hover {
-            background: #0097a7;
-        }
-
-        .hidden {
-            display: none;
         }
 
         #message {
-            margin-top: 10px;
+            margin-top: 15px;
             color: #76ff03;
             font-size: 14px;
         }
@@ -81,15 +57,16 @@
 </head>
 
 <body>
-    <div class="container">
-        <h2>📱 Login with Phone</h2>
+
+    <div class="box">
+        <h2>📱 Phone Login</h2>
 
         <div id="login-section">
-            <input type="text" id="phoneNumber" placeholder="+91XXXXXXXXXX">
+            <input type="text" id="phone" placeholder="+91XXXXXXXXXX">
             <button id="send-otp-btn" onclick="sendOTP()">Send OTP</button>
         </div>
 
-        <div id="verify-section" class="hidden">
+        <div id="verify-section" style="display:none;">
             <input type="text" id="otp" placeholder="Enter OTP">
             <button onclick="verifyOTP()">Verify OTP</button>
         </div>
@@ -97,12 +74,15 @@
         <p id="message"></p>
     </div>
 
-    <!-- Firebase Scripts -->
+    <!-- 🔥 MOST IMPORTANT: Explicit reCAPTCHA script -->
+    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
+
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script>
 
     <script>
-        // Firebase Config
+        // Your Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyCJg2wZukKNGQvA6HBshVRqotrHYdhHSsQ",
             authDomain: "login-cf77f.firebaseapp.com",
@@ -113,54 +93,59 @@
             measurementId: "G-WT386SLK4E"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-
-        // Invisible reCAPTCHA (user never sees it)
-        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('send-otp-btn', {
-            'size': 'invisible'
-        });
 
         let confirmationResult;
 
-        // Send OTP
-        function sendOTP() {
-            const phoneNumber = document.getElementById("phoneNumber").value;
-            const messageEl = document.getElementById("message");
+        // Invisible reCAPTCHA (strongest version)
+        window.onload = function () {
+            window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('send-otp-btn', {
+                'size': 'invisible',
+                'callback': function (response) {
+                    console.log("Invisible reCAPTCHA Solved");
+                }
+            });
+        };
 
-            if (!phoneNumber.startsWith("+")) {
-                messageEl.innerText = "⚠️ Include country code, e.g. +91";
+        function sendOTP() {
+            const phone = document.getElementById("phone").value;
+            const msg = document.getElementById("message");
+
+            if (!phone.startsWith("+")) {
+                msg.innerText = "⚠️ Add country code. Example: +91";
                 return;
             }
 
             const appVerifier = window.recaptchaVerifier;
 
-            firebase.auth().signInWithPhoneNumber(phoneNumber, appVerifier)
-                .then(result => {
-                    confirmationResult = result;
-                    document.getElementById("login-section").classList.add("hidden");
-                    document.getElementById("verify-section").classList.remove("hidden");
-                    messageEl.innerText = "✅ OTP sent successfully!";
+            firebase.auth().signInWithPhoneNumber(phone, appVerifier)
+                .then(confirmation => {
+                    confirmationResult = confirmation;
+
+                    document.getElementById("login-section").style.display = "none";
+                    document.getElementById("verify-section").style.display = "block";
+
+                    msg.innerText = "✅ OTP sent successfully!";
                 })
                 .catch(error => {
-                    messageEl.innerText = "❌ " + error.message;
+                    msg.innerText = "❌ Error: " + error.message;
+                    console.log(error);
                 });
         }
 
-        // Verify OTP
         function verifyOTP() {
             const otp = document.getElementById("otp").value;
-            const messageEl = document.getElementById("message");
+            const msg = document.getElementById("message");
 
             confirmationResult.confirm(otp)
                 .then(result => {
-                    messageEl.innerText = "✅ Login successful!";
+                    msg.innerText = "✅ Login successful!";
                     setTimeout(() => {
-                        window.location.href = "next.html"; // Redirect after login
-                    }, 1200);
+                        window.location.href = "next.html";
+                    }, 1500);
                 })
                 .catch(error => {
-                    messageEl.innerText = "❌ Invalid OTP!";
+                    msg.innerText = "❌ Invalid OTP!";
                 });
         }
     </script>
